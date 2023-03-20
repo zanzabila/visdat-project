@@ -1,20 +1,23 @@
+# Tugas Besar Visualisasi Data Kelompok 4 Kelas IF-42-GAB06
+# Sumber data: https://www.kaggle.com/ardisragen/indonesia-coronavirus-cases/version/39
+# Dataset yang digunakan adalah 'province.csv' dan 'cases.csv'
+
 import pandas as pd
-import numpy as np
-from bokeh.io import output_notebook, output_file, curdoc
-from bokeh.plotting import figure, show, reset_output
-from bokeh.models import ColumnDataSource, CDSView, HoverTool, Panel
+from bokeh.io import curdoc
+from bokeh.plotting import figure
+from bokeh.models import ColumnDataSource, HoverTool, Panel
 from bokeh.models.widgets import TableColumn, DataTable, Tabs
 import math
 
 
-df_province = pd.read_csv('./data/province.csv', index_col=0)
-df_cases = pd.read_csv('./data/cases.csv')
+df_province = pd.read_csv('./data/province.csv', index_col=0, encoding='windows-1252')
+df_cases = pd.read_csv('./data/cases.csv', encoding='windows-1252')
 
 df_province['province_name'] = df_province['province_name'].str[1:]
 df_province = df_province[:-1]
 
 
-# Tab table
+# Tab 1: population summary table
 
 stats = df_province.groupby('island')['population'].describe()
 stats = stats.reset_index()
@@ -30,10 +33,23 @@ table = DataTable(source=src, columns=table_columns, width=1000)
 tab1 = Panel(child=table, title='Population Summary')
 
 
-# Tab line & bar plot
+# Tab 2: summary tabel terkonfirmasi
 
-reset_output()
-output_notebook()
+stats = df_province.groupby('island')['confirmed'].describe()
+stats = stats.reset_index()
+
+src = ColumnDataSource(stats)
+
+table_columns = [TableColumn(field='island', title='Pulau'),
+                 TableColumn(field='min', title='Terkonfirmasi Minimum'),
+                 TableColumn(field='mean', title='Terkonfirmasi Rata-Rata'),
+                 TableColumn(field='max', title='Terkonfirmasi Maksimum')]
+
+table = DataTable(source=src, columns=table_columns)
+tab2 = Panel(child=table, title='Summary Kasus Positif Tiap Pulau')
+
+# Tab 3: line & bar plot jumlah kasus per hari
+
 cases_cds = ColumnDataSource(df_cases)
 
 fig_line = figure(plot_height=600, plot_width=800,
@@ -78,7 +94,7 @@ fig_line.vbar(x='date', top='new_tested',
 fig_line.vbar(x='date', top='being_checked',
               width=0.8,
               alpha=0.3,
-              fill_color='#36FFBC',
+              fill_color='#FC0339',
               legend_label='Tes dalam proses',
               source=cases_cds)
 
@@ -126,13 +142,14 @@ fig_line.add_tools(HoverTool(tooltips=tooltips, renderers=[new_confirmed_hover_g
 
 fig_line.legend.click_policy = 'hide'
 
-tab2 = Panel(child=fig_line, title='Plot Jumlah Kasus')
+tab3 = Panel(child=fig_line, title='Plot Jumlah Kasus')
 
 
-# Tab scatter
+# Tab 4: scatter plot antara banyak kasus dan kepadatan penduduk
 
 province_cds = ColumnDataSource(df_province)
-select_tools = ['box_select',
+select_tools = ['wheel_zoom',
+                'box_select',
                 'lasso_select',
                 'poly_select',
                 'tap',
@@ -162,9 +179,11 @@ tooltips = [('Provinsi', '@province_name'),
 
 fig_scatter.add_tools(HoverTool(tooltips=tooltips))
 
-tab3 = Panel(child=fig_scatter, title='Populasi Per KM Persegi & Kasus Terkonfirmasi')
+tab4 = Panel(child=fig_scatter, title='Populasi Per KM Persegi & Kasus Terkonfirmasi')
 
 
-tabs = Tabs(tabs=[tab1, tab2, tab3])
+# Menggabungkan semua tab yang sudah dibuat
+
+tabs = Tabs(tabs=[tab1, tab2, tab3, tab4])
 
 curdoc().add_root(tabs)
